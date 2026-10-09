@@ -1,0 +1,42 @@
+{
+ "id": "dncn_qn_mk1",
+ "title": "+ DNCn_QN closure term (the queen, hinged)",
+ "language": "python",
+ "date": "2026-10-09",
+ "parents": [
+  {
+   "id": "disco_mk1",
+   "rel": "variant"
+  }
+ ],
+ "delta": "Adds soft ABCD counts, non-closure g with its delta-method floor, and the hinged closure term relu(z^2 - 1) averaged over cut pairs drawn per batch (loss_r3_qn replaces loss_r2).",
+ "files": [
+  "dncn_qn_mk1.py"
+ ],
+ "source_path": "Written by the AI from the author's canon spec for this repo; not a copy of any analysis-repo file.",
+ "ai_model": "claude-opus-5-5",
+ "prompt_file": "",
+ "review_status": "DRAFT",
+ "review_date": "",
+ "review_evidence": "",
+ "experimental": false,
+ "experimental_reason": "",
+ "applies_to": [
+  "endcap"
+ ],
+ "tags": [
+  "abcd",
+  "closure",
+  "queen",
+  "R3"
+ ],
+ "notes": [
+  "Rung R3 = R2 + mu * L_clo, L_clo = mean over cut pairs of relu(z^2 - 1), z = g / sigma, sigma detached.",
+  "Soft counts u = sigmoid(k * (s - b)), k = 100; cuts are unweighted background-score quantiles of the batch, q drawn uniformly in [0.3, 0.8], 3 pairs per batch by default.",
+  "Variance per region is taken as sum((w * membership)^2) -- check against canon before sealing.",
+  "The dance-floor value is logged as a diagnostic alongside z^2 and qn_active.",
+  "First target region: endcap.",
+  "DRAFT: generated, not yet read line by line by the author."
+ ],
+ "superseded_by": ""
+}

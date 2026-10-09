@@ -1,0 +1,44 @@
+{
+ "id": "bce_mlp_mk1",
+ "title": "Vanilla MLP pair + weighted BCE",
+ "language": "python",
+ "date": "2026-10-09",
+ "parents": [],
+ "delta": "Root of the lineage.",
+ "files": [
+  "bce_mlp_mk1.py"
+ ],
+ "source_path": "Written by the AI from the author's canon spec for this repo; not a copy of any analysis-repo file.",
+ "ai_model": "claude-opus-5-5",
+ "prompt_file": "",
+ "review_status": "DRAFT",
+ "review_date": "",
+ "review_evidence": "",
+ "experimental": false,
+ "experimental_reason": "",
+ "applies_to": [
+  "barrel",
+  "endcap"
+ ],
+ "tags": [
+  "mlp",
+  "bce",
+  "R1"
+ ],
+ "notes": [
+  "Rung R1 = BCE(NN1) + BCE(NN2). Two independent MLPs, nothing couples the scores.",
+  "Label convention 1 = signal, 0 = background; later units take bkg_label for inverted targets.",
+  "DRAFT: generated, not yet read line by line by the author."
+ ],
+ "superseded_by": "",
+ "seal": {
+  "sealed": "2026-10-09",
+  "files": [
+   {
+    "path": "bce_mlp_mk1.py",
+    "sha256": "87c7c1bd954c1d6f6e324f6d788e6f0b6a823683f18a392ffea5e2f815088c73",
+    "bytes": 1777
+   }
+  ]
+ }
+}

@@ -1,0 +1,37 @@
+GENEALOGY MODEL -- code_truth_genealogy
+
+1. GRAPH
+   Units are nodes. parents[] are edges, each typed: revision | variant | merge.
+   The graph is a DAG: build.py rejects unknown parents and cycles.
+   In practice it is a tree; merge exists for the day two branches combine.
+   Computed by build.py, never typed by hand:
+     children, depth (longest path from a root), ancestors, integrity, diffs.
+
+2. REVIEW LADDER (review_status)
+   DRAFT -> READ -> RUN -> VERIFIED          then SUPERSEDED or RETIRED
+   Only READ and above is ground truth. DRAFT is shown, clearly marked.
+
+3. EXPERIMENTAL (separate flag)
+   Says the METHOD is unvetted, whatever the review rung of the code.
+   Clearing it is a metadata edit; the file and its seal do not change.
+   The "as prompt" download repeats the flag and the reason.
+
+4. SEAL AND INTEGRITY
+   The seal is the sha256 of each file's raw bytes, stored in registry/<id>.json.
+   build.py seals a unit the first time it sees it, and afterwards only compares.
+     OK        bytes match the seal
+     MODIFIED  bytes differ  -> "MODIFIED SINCE REVIEW" on the site, build exits 2
+     MISSING   file gone     -> same
+   A reviewed file is never edited. A change is a new unit (revision).
+   A DRAFT may be edited: run  python tools/seal.py <id>  to re-seal it.
+   seal.py refuses to re-seal a reviewed unit without --force.
+   .gitattributes sets "* -text" so git cannot rewrite line endings under the hash.
+
+5. REVIEWING A UNIT
+   python tools/seal.py <id> --status READ --evidence "read every line, ..."
+   writes review_status / review_date / review_evidence into unit.json,
+   after checking the file still matches its seal.
+
+6. PUBLIC REPO
+   No unpublished analysis internals: no data paths, feature lists,
+   sweep numbers or internal ids in code, notes or prompts.

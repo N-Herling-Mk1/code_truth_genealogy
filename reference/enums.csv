@@ -1,0 +1,19 @@
+enum,value,description
+review_status,DRAFT,Generated. Not reviewed. Not ground truth. File may still change (re-seal).
+review_status,READ,Author read every line.
+review_status,RUN,READ + executed on real data.
+review_status,VERIFIED,RUN + passed a named check recorded in review_evidence.
+review_status,SUPERSEDED,Was truth; replaced by superseded_by.
+review_status,RETIRED,Withdrawn. Kept for the record.
+rel,revision,Same unit fixed or improved. Same slug; mk number goes up.
+rel,variant,A branch: a different approach built on the parent. New slug.
+rel,merge,Combines two or more parents.
+language,python,
+language,powershell,
+language,javascript,
+language,html,
+language,css,
+language,text,
+integrity,OK,Computed. File bytes match the sealed sha256.
+integrity,MODIFIED,Computed. File changed since it was sealed.
+integrity,MISSING,Computed. Sealed file is gone.

@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Truth Genealogy</title>
+<meta name="description" content="Genealogy of AI-generated, human-reviewed, hash-sealed code units - browse the lineage, diff against the parent, download as file or as prompt.">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48 64x64">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="UA ATLAS">
+<meta property="og:title" content="Code Truth Genealogy">
+<meta property="og:description" content="Genealogy of AI-generated, human-reviewed, hash-sealed code units - browse the lineage, diff against the parent, download as file or as prompt.">
+<meta property="og:url" content="https://n-herling-mk1.github.io/code_truth_genealogy/">
+<meta property="og:image" content="https://n-herling-mk1.github.io/code_truth_genealogy/assets/social_card.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Code Truth Genealogy - badge with the branching lineage rail">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Code Truth Genealogy">
+<meta name="twitter:description" content="Genealogy of AI-generated, human-reviewed, hash-sealed code units.">
+<meta name="twitter:image" content="https://n-herling-mk1.github.io/code_truth_genealogy/assets/social_card.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000; --ink:#e9eef2; --mute:#7d8a96; --line:#2a333c; --spine:#4a5661;
+  --ares:#e8230a; --cyan:#6fe3ef;
+  --blue:#4da3ff; --green:#3ddc84; --yellow:#ffd23f;   /* highlights: revision / variant / merge + names */
+  --mono:'Share Tech Mono',ui-monospace,Consolas,monospace; --head:'Orbitron',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:15px}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:30px;padding:28px 32px 24px}
+.top img{width:200px;height:200px;flex:none;display:block}
+.top h1{font-family:var(--head);font-weight:900;font-size:clamp(26px,5.4vw,60px);letter-spacing:.06em;margin:0;line-height:1.05}
+.top h1 b{color:var(--ares);font-weight:900}
+.top .sub{color:var(--mute);margin-top:14px;letter-spacing:.08em;font-size:17px}
+.top a{text-decoration:none}
+
+/* persistent nav bar (sticky on every page) */
+.navbar{position:sticky;top:0;z-index:20;background:rgba(0,0,0,.92);backdrop-filter:blur(6px);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.navbar .in{max-width:1100px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:4px;overflow-x:auto;scrollbar-width:none}
+.navbar .in::-webkit-scrollbar{display:none}
+.navbar .brand{display:none;align-items:center;gap:10px;margin-right:14px;font-family:var(--head);font-weight:900;font-size:12px;letter-spacing:.14em;white-space:nowrap;text-decoration:none}
+.navbar.stuck .brand{display:flex}
+.navbar .brand img{width:28px;height:28px}
+.navbar .brand b{color:var(--ares)}
+.navbar a.tab{display:block;padding:15px 14px 13px;text-decoration:none;font-family:var(--head);font-weight:700;font-size:12px;letter-spacing:.14em;
+  color:var(--mute);border-bottom:2px solid transparent;white-space:nowrap}
+.navbar a.tab:hover{color:var(--yellow)}
+.navbar a.tab[aria-current=page]{color:var(--ink);border-bottom-color:var(--ares)}
+.navbar a.tab.flag{color:var(--ares)}
+.navbar .sp{flex:1}
+.navbar a.ext{color:var(--mute)}
+
+/* badges + chips (shared) */
+.bd{display:inline-block;font-family:var(--head);font-weight:700;font-size:10px;letter-spacing:.16em;padding:3px 7px 2px;border:1px solid currentColor;border-radius:3px;margin:0 6px 4px 0;white-space:nowrap}
+.bd.DRAFT{color:var(--mute)} .bd.READ{color:var(--blue)} .bd.RUN,.bd.VERIFIED{color:var(--green)}
+.bd.VERIFIED{background:rgba(61,220,132,.12)}
+.bd.SUPERSEDED,.bd.RETIRED{color:var(--spine);text-decoration:line-through}
+.bd.exp{color:var(--yellow)} .bd.ok{color:var(--spine)}
+.bd.bad{color:#fff;background:var(--ares);border-color:var(--ares)}
+.chips{margin-top:8px;font-size:12.5px;line-height:1.9;color:var(--mute)}
+.chips .k{font-family:var(--head);font-weight:700;font-size:10px;letter-spacing:.18em;margin-right:6px}
+.chip{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:3px;padding:0 8px;margin:0 4px 4px 0;color:var(--ink);white-space:nowrap}
+.chip:hover{border-color:var(--yellow);color:var(--yellow)}
+.chip.revision{border-left:3px solid var(--blue)} .chip.variant{border-left:3px solid var(--green)} .chip.merge{border-left:3px solid var(--yellow)}
+.chip small{color:var(--mute);margin-left:6px;font-size:11px}
+
+/* ---------- lineage mini-map ---------- */
+.map{max-width:980px;margin:26px auto 0;padding:0 16px}
+.map .k{font-family:var(--head);font-weight:700;font-size:10px;letter-spacing:.2em;color:var(--mute);margin-bottom:6px}
+.map .box{border:1px solid var(--line);overflow-x:auto;padding:6px 0}
+.map svg{display:block;margin:0 auto}
+.map .edge{fill:none;stroke-width:2}
+.map .edge.revision{stroke:var(--blue)} .map .edge.variant{stroke:var(--green)} .map .edge.merge{stroke:var(--yellow)}
+.map .edge.dim{opacity:.25}
+.map g.node{cursor:pointer}
+.map g.node rect{fill:#000;stroke:var(--ink);stroke-width:2.5}
+.map g.node text{font-family:var(--mono);font-size:12px;fill:var(--mute)}
+.map g.node.on rect{fill:var(--ares);stroke:var(--ares)}
+.map g.node.on text{fill:#fff}
+.map g.node.anc rect{stroke:var(--ares)} .map g.node.anc text{fill:var(--ink)}
+.map g.node.dim{opacity:.35}
+.map g.node.exp rect{stroke-dasharray:3 2}
+.map g.node.bad rect{stroke:var(--ares);fill:var(--ares)}
+.map g.node:hover rect{stroke:var(--yellow);fill:var(--yellow)} .map g.node:hover text{fill:var(--yellow)}
+.legend{color:var(--mute);font-size:11.5px;letter-spacing:.06em;margin-top:8px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin:0 5px 0 12px}
+
+/* ---------- page 1: timeline ---------- */
+.tl{position:relative;max-width:980px;margin:10px auto 0;padding:40px 16px 60px}
+.tl:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;
+  background:linear-gradient(transparent,var(--ares) 40px,var(--green) 50%,var(--blue) calc(100% - 40px),transparent);opacity:.75}
+.ev{position:relative;display:flex;min-height:150px;margin-bottom:36px}
+.tl.packed .ev{position:absolute;left:16px;right:16px;margin:0;min-height:0}
+.ev .arm{position:absolute;top:34px;height:3px;background:var(--spine)}
+.ev .knot{position:absolute;left:50%;top:27px;width:17px;height:17px;margin-left:-8.5px;background:#000;border:3px solid var(--ink);transform:rotate(45deg)}
+.ev.l{justify-content:flex-start} .ev.r{justify-content:flex-end}
+.ev.l .arm{left:40%;right:50%} .ev.r .arm{left:50%;right:40%}
+.entry{width:40%;text-align:left;line-height:1.55}
+.ev.l .entry{padding-right:18px} .ev.r .entry{padding-left:18px}
+.entry .head{display:block;text-decoration:none;position:relative;padding:10px 16px 8px;margin:-10px -16px -8px;border:1px solid transparent;border-radius:12px;
+  transition:border-color .18s,box-shadow .18s,background .18s}
+.entry .head>*{transition:text-shadow .18s,color .18s}
+.entry .d{font-family:var(--head);font-weight:900;font-size:17px;letter-spacing:.08em;color:var(--ares)}
+.entry .nm{color:var(--yellow);font-size:15px;letter-spacing:.04em}
+.entry .row{font-size:13.5px;letter-spacing:.04em;color:var(--blue)}
+.entry .row span{color:var(--ink)}
+.entry .id{font-family:var(--head);font-weight:700;font-size:11px;letter-spacing:.18em;color:var(--mute);margin:4px 0 6px}
+/* hover flare: framed, glowing head block -- chips and notes untouched */
+.entry .head:hover,.entry .head:focus-visible{border-color:rgba(255,210,63,.75);background:rgba(255,255,255,.025);
+  box-shadow:0 0 0 1px rgba(255,210,63,.18),0 0 22px rgba(255,210,63,.28),inset 0 0 20px rgba(255,210,63,.07)}
+.entry .head:hover:before,.entry .head:hover:after,.entry .head:focus-visible:before,.entry .head:focus-visible:after{
+  content:"";position:absolute;width:14px;height:14px;border:2px solid var(--yellow);pointer-events:none}
+.entry .head:hover:before,.entry .head:focus-visible:before{left:-5px;top:-5px;border-right:0;border-bottom:0;border-top-left-radius:6px}
+.entry .head:hover:after,.entry .head:focus-visible:after{right:-5px;bottom:-5px;border-left:0;border-top:0;border-bottom-right-radius:6px}
+.entry .head:hover .d{color:#fff;text-shadow:0 0 1px #fff,0 0 8px var(--ares),0 0 18px var(--ares),0 0 30px rgba(232,35,10,.6)}
+.entry .head:hover .nm{text-shadow:0 0 6px var(--yellow),0 0 14px rgba(255,210,63,.7)}
+.entry .head:hover .row{text-shadow:0 0 6px var(--blue),0 0 14px var(--blue)}
+.entry .head:hover .row span{color:#fff;text-shadow:0 0 6px rgba(255,255,255,.8)}
+.entry .head:hover .id{color:var(--ink);text-shadow:0 0 8px rgba(255,255,255,.6)}
+.ev:has(.head:hover) .knot{background:var(--yellow);border-color:var(--yellow);box-shadow:0 0 14px var(--yellow)}
+.ev:has(.head:hover) .arm{background:var(--yellow)}
+.ev.newest .knot{background:var(--ares);border-color:var(--ares)}
+.ev.rel .knot{background:var(--green);border-color:var(--green);box-shadow:0 0 12px var(--green)}
+.notes{margin-top:10px;border-left:2px solid var(--line);padding:4px 0 4px 12px}
+.notes .k{font-family:var(--head);font-weight:700;font-size:10px;letter-spacing:.2em;color:var(--yellow);margin-bottom:4px}
+.notes ul{margin:0;padding:0 0 0 14px;color:var(--mute);font-size:12.5px;line-height:1.5}
+.notes li{padding:1px 0}
+.notes.na ul{list-style:none;padding:0}
+.pg .notes{margin:22px 0 4px;max-width:760px}
+.pg .notes ul{font-size:13.5px;color:#b9c3cc}
+.key{text-align:center;color:var(--mute);font-size:12px;letter-spacing:.08em;margin:0 0 70px;padding:0 16px}
+
+/* ---------- page 2: one unit ---------- */
+.pg{max-width:980px;margin:0 auto;padding:6px 16px 80px}
+.vh{margin:26px 0 8px}
+.vh .d{font-family:var(--head);font-weight:900;font-size:clamp(20px,4vw,30px);letter-spacing:.06em;color:var(--ares);overflow-wrap:anywhere}
+.vh .nm{color:var(--yellow);margin:6px 0 12px;letter-spacing:.06em;font-size:17px}
+.alert{border:1px solid var(--ares);background:rgba(232,35,10,.12);padding:12px 14px;margin:16px 0;letter-spacing:.04em}
+.alert b{font-family:var(--head);letter-spacing:.14em;color:#fff}
+.alert.exp{border-color:var(--yellow);background:rgba(255,210,63,.07)} .alert.exp b{color:var(--yellow)}
+.alert.draft{border-color:var(--spine);background:rgba(255,255,255,.03)} .alert.draft b{color:var(--ink)}
+dl.meta{display:grid;grid-template-columns:150px 1fr;gap:0;margin:18px 0 0;font-size:13.5px}
+dl.meta dt{color:var(--mute);letter-spacing:.12em;font-size:11.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+dl.meta dd{margin:0;padding:6px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+dl.meta dd .sha{color:var(--cyan)}
+.dl{display:flex;gap:10px;align-items:center;margin:22px 0 6px;flex-wrap:wrap}
+.dl .k{color:var(--mute);font-size:12px;letter-spacing:.14em;margin-right:4px}
+.dl a,.dl button{background:none;border:1px solid var(--spine);padding:6px 14px;cursor:pointer;letter-spacing:.06em;text-decoration:none}
+.dl a:hover,.dl button:hover{border-color:var(--yellow);color:var(--yellow)}
+section.blk{margin-top:36px}
+section.blk h2{font-family:var(--head);font-weight:900;font-size:18px;letter-spacing:.12em;margin:0 0 12px;border-bottom:2px solid currentColor;padding-bottom:8px;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+section.blk h2 small{font-family:var(--mono);font-weight:400;font-size:12px;letter-spacing:.06em;color:var(--mute)}
+section.code h2{color:var(--blue)} section.diff h2{color:var(--green)}
+pre.src{margin:0;border:1px solid var(--line);background:#05070a;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.5;padding:10px 0;tab-size:4}
+pre.src .ln{display:block;padding:0 14px 0 0;white-space:pre}
+pre.src .ln:before{content:attr(data-n);display:inline-block;width:46px;padding-right:12px;margin-right:12px;text-align:right;color:var(--spine);border-right:1px solid var(--line);user-select:none}
+pre.src .c{color:var(--mute)} pre.src .s{color:var(--green)} pre.src .kw{color:var(--ares)} pre.src .n{color:var(--yellow)} pre.src .fn{color:var(--blue)}
+pre.src .ln.add{background:rgba(61,220,132,.13);color:#b9f5d2} pre.src .ln.del{background:rgba(232,35,10,.16);color:#ffb9ae}
+pre.src .ln.hunk{color:var(--cyan);background:rgba(111,227,239,.07)} pre.src .ln.fh{color:var(--mute)}
+pre.src .ln.add:before,pre.src .ln.del:before,pre.src .ln.hunk:before,pre.src .ln.fh:before,pre.src .ln.ctx:before{content:attr(data-n)}
+.note{color:var(--mute);font-size:12px;margin-top:10px;letter-spacing:.04em}
+.empty{max-width:700px;margin:60px auto;padding:0 16px;color:var(--mute);text-align:center;line-height:1.7}
+
+@media (max-width:700px){
+  .top{padding:16px;gap:16px}
+  .navbar a.tab{padding:14px 10px 12px}
+  .navbar .brand span{display:none}
+  .top img{width:96px;height:96px}
+  .top .sub{font-size:13px;margin-top:8px}
+  .tl:before{left:26px}
+  .ev,.ev.l,.ev.r{justify-content:flex-start;min-height:0;padding-bottom:36px}
+  .ev .knot{left:10px;margin-left:-7px}
+  .ev.l .arm,.ev.r .arm{left:12px;right:auto;width:30px}
+  .entry,.ev.l .entry,.ev.r .entry{width:auto;margin-left:54px;padding:0}
+  .ev{margin-bottom:8px}
+  .key{text-align:left;padding:0 16px 0 70px}
+  dl.meta{grid-template-columns:1fr}
+  dl.meta dt{border-bottom:0;padding-bottom:0}
+  pre.src{font-size:12px}
+  pre.src .ln:before{width:34px;padding-right:8px;margin-right:8px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a href="#" aria-label="Timeline"><img src="assets/badge_512.jpg" alt="Repo badge" width="200" height="200"></a>
+  <div>
+    <h1><a href="#">CODE TRUTH <b>GENEALOGY</b></a></h1>
+    <div class="sub">AI-generated &middot; human-reviewed &middot; hash-sealed</div>
+  </div>
+</header>
+<nav class="navbar" id="navbar" aria-label="Units"><div class="in" id="navin"></div></nav>
+<main id="app"></main>
+
+<script src="data.js"></script>
+<script>
+(function(){
+const D=window.CODE_TRUTH, app=document.getElementById('app');
+if(!D){app.innerHTML='<p class="empty">data.js missing &mdash; run python tools/build.py</p>';return;}
+const U=D.units, BY=Object.fromEntries(U.map(u=>[u.id,u]));       // U is newest-first
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const dstr=d=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d||'');return m?`${MON[+m[2]-1]} ${+m[3]}, ${m[1]}`:esc(d||'')};
+const relTo=(u,pid)=>(u.parents.find(p=>p.id===pid)||{}).rel||'variant';
+
+function badges(u){
+  let h=`<span class="bd ${esc(u.review_status)}">${esc(u.review_status)}</span>`;
+  if(u.experimental) h+='<span class="bd exp">EXPERIMENTAL</span>';
+  h+=u.integrity==='OK'?'<span class="bd ok">SEAL OK</span>':`<span class="bd bad">${esc(u.integrity)} SINCE REVIEW</span>`;
+  return h;
+}
+function notes(u){
+  const n=(u.notes&&u.notes.length)?u.notes:['NA'], na=n.length===1&&n[0]==='NA';
+  return `<div class="notes${na?' na':''}"><div class="k">NOTES</div><ul>${n.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+}
+function chips(u){
+  let h='<div class="chips">';
+  h+='<div><span class="k">PARENT &rarr;</span>'+(u.parents.length
+    ?u.parents.map(p=>`<a class="chip ${esc(p.rel)}" href="#${esc(p.id)}">${esc(p.id)}<small>${esc(p.rel)}</small></a>`).join('')
+    :'<span>ROOT</span>')+'</div>';
+  if(u.children.length) h+='<div><span class="k">&rarr; CHILDREN</span>'+
+    u.children.map(c=>`<a class="chip ${esc(relTo(BY[c],u.id))}" href="#${esc(c)}">${esc(c)}<small>${esc(relTo(BY[c],u.id))}</small></a>`).join('')+'</div>';
+  return h+'</div>';
+}
+
+// ---------- lineage mini-map: roots at the bottom, newest generation on top (same direction as the timeline)
+function minimap(cur){
+  if(!U.length) return '';
+  const COL=176, ROW=64, PAD=26, slot={}; let next=0;
+  const kids=id=>BY[id].children.filter(c=>BY[c].parents[0].id===id);   // tree by first parent
+  (function place(ids){ids.forEach(id=>{const k=kids(id);
+    if(!k.length){slot[id]=next++;} else {place(k); slot[id]=(slot[k[0]]+slot[k[k.length-1]])/2;}});
+  })(U.filter(u=>!u.parents.length).map(u=>u.id).sort());
+  const maxD=Math.max(...U.map(u=>u.depth)), W=Math.max(next,1)*COL, H=maxD*ROW+PAD*2;
+  const X=id=>slot[id]*COL+COL/2-40, Y=id=>(maxD-BY[id].depth)*ROW+PAD;
+  const on=cur?new Set([cur,...BY[cur].ancestors]):null;
+  let e='', n='';
+  U.forEach(u=>u.parents.forEach(p=>{
+    const x1=X(p.id),y1=Y(p.id),x2=X(u.id),y2=Y(u.id),my=(y1+y2)/2;
+    const dim=on&&!(on.has(u.id)&&on.has(p.id));
+    e+=`<path class="edge ${esc(p.rel)}${dim?' dim':''}" d="M${x1} ${y1} C${x1} ${my} ${x2} ${my} ${x2} ${y2}"/>`;
+  }));
+  U.forEach(u=>{
+    const cls=['node'];
+    if(u.id===cur) cls.push('on'); else if(on&&on.has(u.id)) cls.push('anc'); else if(on) cls.push('dim');
+    if(u.experimental) cls.push('exp'); if(u.integrity!=='OK') cls.push('bad');
+    n+=`<g class="${cls.join(' ')}" data-go="${esc(u.id)}" tabindex="0" role="link" aria-label="${esc(u.id)}">
+      <rect x="${X(u.id)-7}" y="${Y(u.id)-7}" width="14" height="14" transform="rotate(45 ${X(u.id)} ${Y(u.id)})"/>
+      <text x="${X(u.id)+16}" y="${Y(u.id)+4}">${esc(u.id)}</text></g>`;
+  });
+  return `<div class="map"><div class="k">LINEAGE MAP${cur?' &middot; chain of '+esc(cur):''}</div>
+    <div class="box"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Lineage graph">${e}${n}</svg></div>
+    <div class="legend">edges:<i style="background:var(--blue)"></i>revision<i style="background:var(--green)"></i>variant<i style="background:var(--yellow)"></i>merge
+      &nbsp;&nbsp;&middot;&nbsp; dashed node = experimental &nbsp;&middot;&nbsp; roots at the bottom</div></div>`;
+}
+function wireMap(){
+  app.querySelectorAll('.map g.node').forEach(g=>{
+    const go=()=>{location.hash=g.dataset.go;};
+    g.onclick=go; g.onkeydown=e=>{if(e.key==='Enter')go();};
+  });
+}
+
+function timeline(){
+  if(!U.length){app.innerHTML='<p class="empty">No units yet. Add a folder under units/ with a unit.json and the reviewed file, then run python tools/build.py.</p>';return;}
+  let h=minimap('')+'<div class="tl">';
+  U.forEach((u,i)=>{
+    const side=i%2?'r':'l';
+    h+=`<div class="ev ${side}${i===0?' newest':''}" data-id="${esc(u.id)}"><div class="arm"></div><div class="knot"></div>
+      <div class="entry">
+        <a class="head" href="#${esc(u.id)}" aria-label="Open ${esc(u.id)}">
+          <div class="d">${dstr(u.date)}</div>
+          <div class="nm">${esc(u.title)}</div>
+          <div class="row">${esc(u.language.toUpperCase())} &nbsp;<span>${esc((u.applies_to||[]).join(' · ')||'—')}</span></div>
+          <div class="id">${esc(u.id.toUpperCase())}</div>
+          <div>${badges(u)}</div>
+        </a>
+        ${chips(u)}
+        ${notes(u)}
+      </div></div>`;
+  });
+  h+='</div><p class="key">newest on top &nbsp;&mdash;&nbsp; hover a parent / child chip to light its entry &nbsp;&mdash;&nbsp; select a unit</p>';
+  app.innerHTML=h; wireMap();
+  // hovering a chip lights the related entry's knot
+  app.querySelectorAll('.tl .chip').forEach(c=>{
+    const t=()=>app.querySelector(`.ev[data-id="${c.getAttribute('href').slice(1)}"]`);
+    c.onmouseenter=()=>t()&&t().classList.add('rel'); c.onmouseleave=()=>t()&&t().classList.remove('rel');
+  });
+}
+
+// ---------- syntax highlight (python); other languages are shown plain
+const PY=/(#.*$)|("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|\b(def|class)(\s+)([A-Za-z_]\w*)|\b(return|import|from|as|if|elif|else|for|while|in|not|and|or|is|None|True|False|with|lambda|raise|try|except|finally|pass|yield|assert|break|continue|global|nonlocal|del|def|class)\b|\b(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)\b/gm;
+function hl(code,lang){
+  const rows=[''];                                   // html per source line
+  const put=(txt,cls)=>txt.split('\n').forEach((part,i)=>{
+    if(i) rows.push('');
+    if(part) rows[rows.length-1]+=cls?`<span class="${cls}">${esc(part)}</span>`:esc(part);
+  });
+  if(lang!=='python'){put(code,'');return rows;}
+  let last=0,m; PY.lastIndex=0;
+  while((m=PY.exec(code))){
+    put(code.slice(last,m.index),'');
+    if(m[1]) put(m[1],'c'); else if(m[2]) put(m[2],'s');
+    else if(m[3]){put(m[3],'kw');put(m[4],'');put(m[5],'fn');}
+    else if(m[6]) put(m[6],'kw'); else put(m[7],'n');
+    last=PY.lastIndex;
+  }
+  put(code.slice(last),'');
+  return rows;
+}
+function codeBlock(u){
+  const rows=hl(u.code.replace(/\n$/,''),u.language);
+  return `<pre class="src" aria-label="Source, read-only">${rows.map((r,i)=>`<span class="ln" data-n="${i+1}">${r||' '}</span>`).join('')}</pre>`;
+}
+function diffBlock(d){
+  if(!d.lines.length) return '<p class="note">Identical to the parent file.</p>';
+  return `<pre class="src">${d.lines.map((l,i)=>{
+    const c=i<2?'fh':l[0]==='@'?'hunk':l[0]==='+'?'add':l[0]==='-'?'del':'ctx';
+    return `<span class="ln ${c}" data-n="${c==='add'?'+':c==='del'?'−':''}">${esc(c==='add'||c==='del'||c==='ctx'?l.slice(1):l)||' '}</span>`;
+  }).join('')}</pre>`;
+}
+
+function unit(id){
+  const u=BY[id], primary=u.files[0], seal=Object.fromEntries((u.seal.files||[]).map(f=>[f.path,f]));
+  let h=minimap(id)+`<div class="pg"><div class="vh"><div class="d">${esc(u.id.toUpperCase())} &middot; ${dstr(u.date)}</div>
+    <div class="nm">${esc(u.title)}</div><div>${badges(u)}</div></div>`;
+  if(u.integrity!=='OK') h+=`<div class="alert"><b>${esc(u.integrity)} SINCE REVIEW</b> &mdash; ${esc((u.integrity_detail||[]).join(', '))} no longer matches the sealed sha256. Do not reuse until re-reviewed.</div>`;
+  if(u.review_status==='DRAFT') h+='<div class="alert draft"><b>DRAFT</b> &mdash; generated, not yet reviewed by the author. Not ground truth.</div>';
+  if(u.experimental) h+=`<div class="alert exp"><b>EXPERIMENTAL</b> &mdash; ${esc(u.experimental_reason)}</div>`;
+  if(u.superseded_by) h+=`<div class="alert draft"><b>SUPERSEDED</b> &mdash; replaced by <a href="#${esc(u.superseded_by)}">${esc(u.superseded_by)}</a></div>`;
+  h+=chips(u);
+  const row=(k,v)=>v?`<dt>${k}</dt><dd>${v}</dd>`:'';
+  h+=`<dl class="meta">
+    ${row('CHANGED VS PARENT',esc(u.delta))}
+    ${row('LANGUAGE',esc(u.language))}
+    ${row('AI MODEL',esc(u.ai_model))}
+    ${row('REVIEW',esc(u.review_status)+(u.review_date?' &middot; '+dstr(u.review_date):''))}
+    ${row('EVIDENCE',esc(u.review_evidence))}
+    ${row('APPLIES TO',esc((u.applies_to||[]).join(', ')))}
+    ${row('TAGS',esc((u.tags||[]).join(', ')))}
+    ${row('SOURCE',esc(u.source_path))}
+    ${u.files.map(f=>row('SHA256',`<span class="sha">${esc((seal[f]||{}).sha256||'unsealed')}</span><br>${esc(f)} &middot; ${esc((seal[f]||{}).bytes??'?')} bytes &middot; sealed ${esc(u.seal.sealed||'—')}`)).join('')}
+  </dl>${notes(u)}
+  <div class="dl"><span class="k">DOWNLOAD</span>
+    ${u.files.map(f=>`<a href="units/${esc(u.id)}/${esc(f)}" download>${esc(f)}</a>`).join('')}
+    <a href="prompts/${esc(u.id)}.md" download="${esc(u.id)}_prompt.md">as prompt .md</a>
+    <a href="lineage/${esc(u.id)}_lineage.zip" download>lineage .zip</a>
+    <button id="cp">copy code</button></div>`;
+  u.diffs.forEach(d=>{h+=`<section class="blk diff"><h2>DIFF VS ${esc(d.parent.toUpperCase())}<small>${esc(d.rel)} &middot; +${d.added} / &minus;${d.removed} lines</small></h2>${diffBlock(d)}</section>`;});
+  if(!u.parents.length) h+='<p class="note" style="margin-top:30px">Root unit: no parent to diff against.</p>';
+  h+=`<section class="blk code"><h2>CODE<small>${esc(primary)} &middot; read-only</small></h2>${codeBlock(u)}</section></div>`;
+  app.innerHTML=h; wireMap();
+  const cp=document.getElementById('cp');
+  cp.onclick=()=>{(navigator.clipboard?navigator.clipboard.writeText(u.code):Promise.reject()).then(
+    ()=>{cp.textContent='copied';},()=>{cp.textContent='copy failed';}).finally(()=>setTimeout(()=>{cp.textContent='copy code';},1400));};
+}
+
+// interleave left/right entries: each entry starts as high as possible, but
+// every knot stays at least GAP below the previous one (order preserved)
+function layout(){
+  const tl=app.querySelector('.tl'); if(!tl) return;
+  const evs=[...tl.querySelectorAll('.ev')];
+  if(window.innerWidth<=700){tl.classList.remove('packed');tl.style.height='';evs.forEach(e=>e.style.top='');return;}
+  tl.classList.add('packed');
+  const GAP=110, SAME=40; let knot=40; const bottom={l:0,r:0};
+  evs.forEach((e,i)=>{
+    const side=e.classList.contains('l')?'l':'r';
+    const top=i===0?40:Math.max(knot+GAP, bottom[side]+SAME);
+    e.style.top=top+'px'; knot=top; bottom[side]=top+e.offsetHeight;
+  });
+  tl.style.height=(Math.max(bottom.l,bottom.r)+60)+'px';
+}
+window.addEventListener('resize',layout);
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(layout);
+
+function navbar(cur){
+  const tabs=[`<a class="tab" href="#" ${cur?'':'aria-current="page"'}>TIMELINE</a>`]
+    .concat(U.map(u=>`<a class="tab${u.integrity!=='OK'?' flag':''}" href="#${esc(u.id)}" ${cur===u.id?'aria-current="page"':''}>${esc(u.id.toUpperCase())}</a>`));
+  document.getElementById('navin').innerHTML=
+    `<a class="brand" href="#" aria-label="Timeline"><img src="favicon.svg" alt=""><span>CODE <b>TRUTH</b></span></a>`+tabs.join('')+
+    `<span class="sp"></span><a class="tab ext" href="${esc(D.repo)}" target="_blank" rel="noopener">REPO &#8599;</a>`;
+}
+(function(){
+  const bar=document.getElementById('navbar'), top=document.querySelector('.top');
+  if('IntersectionObserver' in window) new IntersectionObserver(([e])=>bar.classList.toggle('stuck',!e.isIntersecting)).observe(top);
+})();
+
+function route(){
+  const id=decodeURIComponent(location.hash.slice(1)), ok=!!BY[id];
+  navbar(ok?id:'');
+  if(ok){unit(id);document.title=`${id.toUpperCase()} · Code Truth Genealogy`;}
+  else{timeline();layout();document.title='Code Truth Genealogy';}
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+route();
+})();
+</script>
+</body>
+</html>

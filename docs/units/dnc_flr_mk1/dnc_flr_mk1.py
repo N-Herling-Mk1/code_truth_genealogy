@@ -1,0 +1,167 @@
+# -*- coding: utf-8 -*-
+"""
+dnc_flr_mk1 -- MLP pair + BCE + lambda * DisCo + nu * DNC_FLR   (rung R3_disco_flr)
+
+    R3 = BCE(NN1) + BCE(NN2) + lambda * dCor^2(bkg) + nu * L_flr
+    L_flr = mean_cuts ( g^2 - floor ),  g = N_A - N_B*N_C/N_D  (in events)
+
+EXPERIMENTAL. Unhinged sibling of the queen: same g, same floor, different
+scaling, gradient at any count. See the notes on this entry before reuse.
+
+Conventions used by every unit in this lineage
+    logits : raw network outputs, shape (n,)
+    y      : labels, shape (n,), 1 = signal, 0 = background
+             (pass bkg_label=1 downstream if your target polarity is inverted)
+    w      : per-event weights, shape (n,), or None for unit weights
+"""
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class MLP(nn.Module):
+    """Plain fully connected classifier. forward() returns logits, shape (n,)."""
+
+    def __init__(self, n_in, hidden=(64, 64), dropout=0.0):
+        super().__init__()
+        layers, d = [], n_in
+        for h in hidden:
+            layers += [nn.Linear(d, h), nn.ReLU()]
+            if dropout > 0:
+                layers.append(nn.Dropout(dropout))
+            d = h
+        layers.append(nn.Linear(d, 1))
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x).squeeze(-1)
+
+
+def bce(logits, y, w=None):
+    """Weighted binary cross-entropy on logits; weighted mean over events."""
+    per_event = F.binary_cross_entropy_with_logits(logits, y.float(), reduction="none")
+    if w is None:
+        return per_event.mean()
+    return (w * per_event).sum() / w.sum().clamp_min(1e-12)
+
+
+def _centered(x, p):
+    """Weighted double-centred distance matrix of a 1-D sample. p sums to 1."""
+    d = (x[:, None] - x[None, :]).abs()
+    row = (d * p[None, :]).sum(dim=1)          # weighted mean over j, per i
+    grand = (row * p).sum()
+    return d - row[:, None] - row[None, :] + grand
+
+
+def dcor2(a, b, w=None, eps=1e-12):
+    """Weighted squared distance correlation of two 1-D samples, in [0, 1].
+
+    dCov^2(a,b) = sum_ij p_i p_j A_ij B_ij   with p = w / sum(w)
+    dCor^2      = dCov^2(a,b) / sqrt(dCov^2(a,a) * dCov^2(b,b))
+    Memory is O(n^2): call it per batch, not on a full dataset.
+    """
+    p = torch.ones_like(a) if w is None else w
+    p = p / p.sum().clamp_min(eps)
+    A, B = _centered(a, p), _centered(b, p)
+    pp = p[:, None] * p[None, :]
+    ab, aa, bb = (pp * A * B).sum(), (pp * A * A).sum(), (pp * B * B).sum()
+    return ab / (aa * bb).clamp_min(eps).sqrt()
+
+
+def disco_bkg(logits1, logits2, y, w=None, bkg_label=0):
+    """dCor^2 between the two sigmoid scores on background events only.
+    Returns 0 (with a graph) when the batch has fewer than 2 background events."""
+    m = y == bkg_label
+    if int(m.sum()) < 2:
+        return (logits1.sum() + logits2.sum()) * 0.0
+    s1, s2 = torch.sigmoid(logits1[m]), torch.sigmoid(logits2[m])
+    return dcor2(s1, s2, None if w is None else w[m])
+
+
+# ----------------------------------------------------------------- ABCD
+#            s2 < b2      s2 > b2
+#  s1 > b1      B            A        A = signal region (both pass)
+#  s1 < b1      D            C        closure: N_A = N_B * N_C / N_D
+REGIONS = ("A", "B", "C", "D")
+
+
+def draw_cuts(n_pairs=3, q_lo=0.3, q_hi=0.8, generator=None):
+    """(n_pairs, 2) quantile levels, uniform in [q_lo, q_hi], drawn per batch.
+    Pass a seeded torch.Generator for reproducible validation cuts."""
+    return q_lo + (q_hi - q_lo) * torch.rand(n_pairs, 2, generator=generator)
+
+
+def soft_counts(s1, s2, w, b1, b2, k=100.0):
+    """Soft ABCD yields N_i = sum(w * m_i) and variances V_i = sum((w * m_i)^2),
+    with soft memberships from u = sigmoid(k * (s - b))."""
+    u1, u2 = torch.sigmoid(k * (s1 - b1)), torch.sigmoid(k * (s2 - b2))
+    member = {"A": u1 * u2, "B": u1 * (1 - u2), "C": (1 - u1) * u2, "D": (1 - u1) * (1 - u2)}
+    N = {r: (w * member[r]).sum() for r in REGIONS}
+    V = {r: ((w * member[r]) ** 2).sum() for r in REGIONS}
+    return N, V
+
+
+def g_and_floor(N, V, eps=1e-12):
+    """Non-closure g = N_A - N_B*N_C/N_D (in events) and its delta-method
+    statistical floor  F = sum_i (dg/dN_i)^2 * V_i."""
+    nd = N["D"].clamp_min(eps)
+    g = N["A"] - N["B"] * N["C"] / nd
+    floor = (V["A"]
+             + (N["C"] / nd) ** 2 * V["B"]
+             + (N["B"] / nd) ** 2 * V["C"]
+             + (N["B"] * N["C"] / nd ** 2) ** 2 * V["D"])
+    return g, floor
+
+
+def _bkg_scores(logits1, logits2, y, w, bkg_label):
+    m = y == bkg_label
+    s1, s2 = torch.sigmoid(logits1[m]), torch.sigmoid(logits2[m])
+    wb = torch.ones_like(s1) if w is None else w[m]
+    return s1, s2, wb
+
+
+def _per_cut(s1, s2, wb, q, k):
+    """g and floor at one cut pair. Cuts are background-score quantiles of the
+    batch (unweighted) and carry no gradient."""
+    b1 = torch.quantile(s1.detach(), float(q[0]))
+    b2 = torch.quantile(s2.detach(), float(q[1]))
+    return g_and_floor(*soft_counts(s1, s2, wb, b1, b2, k))
+
+
+def dnc_flr(logits1, logits2, y, w=None, cuts=None, k=100.0, bkg_label=0, eps=1e-12):
+    """DNC_FLR closure term (the dance floor), EXPERIMENTAL:
+
+        L_flr = mean over cut pairs of ( g^2 - floor ),   floor DETACHED
+
+    No hinge: dL/dtheta = 2 g dg/dtheta at any count, so it never goes flat.
+    It is NEGATIVE whenever g^2 < floor (bounded below by -floor), and it is in
+    events^2, not in units of z -- its weight nu is not on the queen's mu scale.
+    Same object as the unhinged queen: g^2 - floor = floor * (z^2 - 1).
+    Returns (L_flr, diag); diag carries detached per-batch means."""
+    s1, s2, wb = _bkg_scores(logits1, logits2, y, w, bkg_label)
+    if s1.numel() < 4:
+        zero = (logits1.sum() + logits2.sum()) * 0.0
+        return zero, {"z2": zero.detach(), "qn_active": zero.detach(), "floor": zero.detach()}
+    cuts = draw_cuts() if cuts is None else cuts
+    terms, z2s, floors = [], [], []
+    for q in cuts:
+        g, floor = _per_cut(s1, s2, wb, q, k)
+        f = floor.detach().clamp_min(eps)
+        terms.append(g ** 2 - f)
+        z2s.append((g ** 2 / f).detach())             # queen form, diagnostic only
+        floors.append(f)
+    z2s = torch.stack(z2s)
+    diag = {"z2": z2s.mean(), "qn_active": (z2s > 1).float().mean(), "floor": torch.stack(floors).mean()}
+    return torch.stack(terms).mean(), diag
+
+
+def loss_r3_flr(logits1, logits2, y, w=None, lam=1.0, nu=1.0, cuts=None, k=100.0, bkg_label=0):
+    """R3_disco_flr = BCE(NN1) + BCE(NN2) + lam * dCor^2(bkg) + nu * L_flr.
+    Returns (total, parts). The total can be negative; that is not a bug."""
+    l1, l2 = bce(logits1, y, w), bce(logits2, y, w)
+    dc = disco_bkg(logits1, logits2, y, w, bkg_label)
+    flr, diag = dnc_flr(logits1, logits2, y, w, cuts, k, bkg_label)
+    total = l1 + l2 + lam * dc + nu * flr
+    parts = {"bce1": l1.detach(), "bce2": l2.detach(), "dcor2": dc.detach(), "flr": flr.detach()}
+    parts.update(diag)
+    return total, parts

@@ -1,0 +1,42 @@
+{
+ "id": "dnc_flr_mk1",
+ "title": "+ DNC_FLR closure term (the dance floor)",
+ "language": "python",
+ "date": "2026-10-09",
+ "parents": [
+  {
+   "id": "disco_mk1",
+   "rel": "variant"
+  }
+ ],
+ "delta": "Sibling of dncn_qn_mk1: same soft counts, g and floor, but the closure term is g^2 - floor (floor detached), with no hinge and no division by the floor (loss_r3_flr replaces loss_r2).",
+ "files": [
+  "dnc_flr_mk1.py"
+ ],
+ "source_path": "Written by the AI from the author's canon spec for this repo; not a copy of any analysis-repo file.",
+ "ai_model": "claude-opus-5-5",
+ "prompt_file": "",
+ "review_status": "DRAFT",
+ "review_date": "",
+ "review_evidence": "",
+ "experimental": true,
+ "experimental_reason": "Author's own construction, not yet vetted: sign check open, gradient audit pending, weight scale unset.",
+ "applies_to": [
+  "barrel"
+ ],
+ "tags": [
+  "abcd",
+  "closure",
+  "dance-floor",
+  "R3"
+ ],
+ "notes": [
+  "Rung R3_disco_flr = R2 + nu * L_flr, L_flr = mean over cut pairs of (g^2 - floor).",
+  "Loss is negative whenever g^2 < floor; bounded below by -floor.",
+  "In events^2, so nu is not on the queen's mu scale; needs its own weight scan.",
+  "This is the events-form g (N_A - N_B*N_C/N_D), not the normalised-ratio form.",
+  "First target region: barrel.",
+  "DRAFT: generated, not yet read line by line by the author."
+ ],
+ "superseded_by": ""
+}

@@ -1,0 +1,2 @@
+# hashes are taken over raw bytes: git must never rewrite line endings
+* -text

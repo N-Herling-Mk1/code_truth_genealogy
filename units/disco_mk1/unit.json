@@ -1,0 +1,40 @@
+{
+ "id": "disco_mk1",
+ "title": "+ lambda * DisCo (double-DisCo on background)",
+ "language": "python",
+ "date": "2026-10-09",
+ "parents": [
+  {
+   "id": "bce_mlp_mk1",
+   "rel": "variant"
+  }
+ ],
+ "delta": "Adds weighted dCor^2 between the two sigmoid scores on background events, scaled by lambda (loss_r2). MLP and bce unchanged.",
+ "files": [
+  "disco_mk1.py"
+ ],
+ "source_path": "Written by the AI from the author's canon spec for this repo; not a copy of any analysis-repo file.",
+ "ai_model": "claude-opus-5-5",
+ "prompt_file": "",
+ "review_status": "DRAFT",
+ "review_date": "",
+ "review_evidence": "",
+ "experimental": false,
+ "experimental_reason": "",
+ "applies_to": [
+  "barrel",
+  "endcap"
+ ],
+ "tags": [
+  "disco",
+  "dcor",
+  "R2"
+ ],
+ "notes": [
+  "Rung R2 = R1 + lambda * dCor^2(s1, s2 | background).",
+  "dcor2 is O(n^2) in memory: per batch only.",
+  "Batches with fewer than 2 background events contribute 0 to the DisCo term.",
+  "DRAFT: generated, not yet read line by line by the author."
+ ],
+ "superseded_by": ""
+}

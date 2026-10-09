@@ -1,0 +1,17 @@
+NAMING -- code_truth_genealogy
+
+unit id        <slug>_mkN          lowercase, digits, underscores.  e.g. disco_mk1
+  slug         names the idea, not its ancestry.
+  mkN          bumps on a REVISION of the same idea (dncn_qn_mk1 -> dncn_qn_mk2).
+  variant      a new idea gets a new slug, starting at mk1.
+  lineage      lives ONLY in parents[]. Never encode a parent in an id, so
+               re-parenting never renames anything.
+
+folders        units/<id>/unit.json          hand-edited metadata
+               units/<id>/<files>            the code, byte-exact
+               registry/<id>.json            generated: metadata + sha256 seal
+               docs/units/<id>/<files>       generated: site copies
+               docs/prompts/<id>.md          generated: "as prompt" wrapper
+               docs/lineage/<id>_lineage.zip generated: unit + all ancestors
+
+primary file   files[0]. By convention <id>.<ext>.

@@ -1,0 +1,20 @@
+field,type,required,description
+id,id,yes,<slug>_mkN. Unique and immutable. Must equal the folder name under units/.
+title,str,yes,One line shown on the timeline.
+language,enum:language,yes,Language of the primary file.
+date,date,yes,Date the code was written (YYYY-MM-DD).
+parents,parents,yes,List of {id; rel}. Empty list = root. More than one = merge.
+delta,str,yes,What changed versus the parent(s).
+files,list,yes,File names inside units/<id>/. First one is the primary file (shown and diffed).
+source_path,str,no,Where the code came from. Nothing confidential.
+ai_model,str,yes,Model that generated the code.
+prompt_file,str,no,File name inside units/<id>/ holding the prompt used. Hashed with the unit.
+review_status,enum:review_status,yes,Where the unit stands on the review ladder.
+review_date,date,if reviewed,Required unless review_status is DRAFT.
+review_evidence,str,if reviewed,What was checked and what passed. Required unless DRAFT.
+experimental,bool,yes,True = the method itself is unvetted. Independent of review_status.
+experimental_reason,str,if experimental,Required when experimental is true.
+applies_to,list,no,Scope tags such as barrel / endcap.
+tags,list,no,Free tags.
+notes,list,no,One string per bullet in the Notes block.
+superseded_by,id,no,Id of the unit that replaces this one.
